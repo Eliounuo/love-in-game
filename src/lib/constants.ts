@@ -1,7 +1,7 @@
 export const WHATSAPP_NUMBER = "77073270000";
 export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`;
 export const PHONE_DISPLAY = "+7 707 032 70 00";
-export const ADDRESS = "г. Алматы, ул. Уалиханова 212/2";
+export const ADDRESS = "г. Кокшетау, ул. Уалиханова 212/2";
 export const HOURS = "Ежедневно: 10:00 – 02:00";
 export const INSTAGRAM_URL = "https://instagram.com/love.in.game1";
 
@@ -50,7 +50,7 @@ export const TARIFFS = [
 
 export const GAMES = [
   { title: "FIFA 25", genre: "Спорт" },
-  { title: "God of War: Ragnarök", genre: "Экшен" },
+  { title: "God of War: Ragnarok", genre: "Экшен" },
   { title: "Spider-Man 2", genre: "Экшен" },
   { title: "Mortal Kombat 1", genre: "Файтинг" },
   { title: "EA Sports FC 25", genre: "Спорт" },

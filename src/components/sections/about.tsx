@@ -18,7 +18,6 @@ export function About() {
   return (
     <section id="about" className="py-28 bg-[#EFE3D8]">
       <div className="max-w-7xl mx-auto px-5 md:px-8 grid md:grid-cols-2 gap-16 items-center">
-        {/* Text */}
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           whileInView={{ opacity: 1, x: 0 }}
@@ -32,7 +31,7 @@ export function About() {
             <span className="italic text-[#B7774E]">становятся впечатлениями</span>
           </h2>
           <p className="text-[#55504C] text-lg leading-relaxed mb-6">
-            Love in Game — это премиальный игровой зал в сердце Алматы,
+            Love in Game — это премиальный игровой зал в сердце Кокшетау,
             созданный для тех, кто ценит комфорт и качество. Мы объединили
             лучшие консоли PlayStation 5, стильный интерьер и атмосферу
             настоящего лаунжа.
@@ -41,7 +40,6 @@ export function About() {
             Здесь проводят время пары на свидании, друзья после работы
             и геймеры, которые хотят играть на топовом оборудовании.
           </p>
-
           <div className="grid grid-cols-2 gap-4 mb-10">
             {PERKS.map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-3 text-[#55504C]">
@@ -50,7 +48,6 @@ export function About() {
               </div>
             ))}
           </div>
-
           <WhatsAppButton
             text="Забронировать"
             size="md"
@@ -58,7 +55,6 @@ export function About() {
           />
         </motion.div>
 
-        {/* Real photos */}
         <motion.div
           initial={{ opacity: 0, x: 30 }}
           whileInView={{ opacity: 1, x: 0 }}
@@ -66,7 +62,6 @@ export function About() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="relative"
         >
-          {/* Main interior photo */}
           <div className="relative aspect-[4/3] rounded-3xl overflow-hidden border border-[#B7774E]/10 shadow-2xl">
             <Image
               src={INTERIOR}
@@ -78,8 +73,6 @@ export function About() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#1D1B19]/25 via-transparent to-transparent" />
           </div>
-
-          {/* Logo card floating bottom-left */}
           <div className="absolute -bottom-6 -left-4 w-32 h-32 rounded-2xl overflow-hidden shadow-xl border border-[#B7774E]/20">
             <Image
               src={LOGO_CARD}
@@ -89,8 +82,6 @@ export function About() {
               className="object-cover"
             />
           </div>
-
-          {/* Rating badge */}
           <div className="absolute -top-4 -right-4 glass rounded-2xl px-4 py-3 shadow-lg">
             <div className="font-display text-2xl font-semibold text-[#B7774E]">5★</div>
             <div className="text-xs text-[#55504C] mt-0.5">Рейтинг гостей</div>

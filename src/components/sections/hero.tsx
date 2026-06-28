@@ -12,7 +12,6 @@ export function Hero() {
       id="hero"
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Real interior photo as background */}
       <div className="absolute inset-0">
         <Image
           src={INTERIOR}
@@ -34,7 +33,7 @@ export function Hero() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="inline-block text-xs tracking-[0.35em] text-[#C99268] uppercase font-semibold mb-6">
-            PlayStation 5 Gaming Café · Алматы
+            PlayStation 5 Gaming Cafe · Кокшетау
           </span>
 
           <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-light text-white leading-[1.05] mb-6">
@@ -45,7 +44,7 @@ export function Hero() {
 
           <p className="text-lg md:text-xl text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
             Премиальный зал PlayStation 5 с уютной атмосферой,
-            отличной кухней и незабываемыми вечерами в Алматы.
+            отличной кухней и незабываемыми вечерами в Кокшетау.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -67,7 +66,6 @@ export function Hero() {
           </div>
         </motion.div>
 
-        {/* Stats */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -87,7 +85,6 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* Scroll indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
