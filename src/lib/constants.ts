@@ -1,9 +1,9 @@
-export const WHATSAPP_NUMBER = "77000000000";
+export const WHATSAPP_NUMBER = "77073270000";
 export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`;
-export const PHONE_DISPLAY = "+7 700 000 00 00";
-export const ADDRESS = "г. Алматы, ул. Примерная, 123";
+export const PHONE_DISPLAY = "+7 707 032 70 00";
+export const ADDRESS = "г. Алматы, ул. Уалиханова 212/2";
 export const HOURS = "Ежедневно: 10:00 – 02:00";
-export const INSTAGRAM_URL = "https://instagram.com/loveingame";
+export const INSTAGRAM_URL = "https://instagram.com/love.in.game1";
 
 export const TARIFFS = [
   {
@@ -93,6 +93,66 @@ export const WHY_US = [
     icon: "🏆",
     title: "Турниры",
     description: "Регулярные соревнования с призами. Сражайся с лучшими игроками города.",
+  },
+] as const;
+
+export const MENU_CATEGORIES = [
+  {
+    key: "pizza",
+    label: "Пицца",
+    photo: "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos/menu-pizza.jpg",
+    items: [
+      { name: "Маргарита", price: "2 190 ₸" },
+      { name: "Пепперони", price: "2 390 ₸" },
+      { name: "Курица с грибами", price: "2 590 ₸" },
+      { name: "Пицца 4 сезона", price: "2 690 ₸" },
+      { name: "Хачапури по-аджарски", price: "2 190 ₸" },
+    ],
+  },
+  {
+    key: "breakfast",
+    label: "Завтраки",
+    photo: "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos/menu-breakfast.jpg",
+    items: [
+      { name: "Драники по-белорусски", price: "2 090 ₸" },
+      { name: "Английский завтрак", price: "2 090 ₸" },
+      { name: "Сладкое утро", price: "2 090 ₸" },
+    ],
+  },
+  {
+    key: "soups",
+    label: "Супы",
+    photo: "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos/menu-soups.jpg",
+    items: [
+      { name: "Борщ", price: "1 490 ₸" },
+      { name: "Окрошка", price: "1 490 ₸" },
+      { name: "Солянка", price: "1 590 ₸" },
+      { name: "Мини-хинкали", price: "1 690 ₸" },
+      { name: "Шорпа", price: "1 990 ₸" },
+    ],
+  },
+  {
+    key: "salads",
+    label: "Салаты",
+    photo: "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos/menu-salads.jpg",
+    items: [
+      { name: "Оливье", price: "1 290 ₸" },
+      { name: "Цезарь", price: "2 090 ₸" },
+      { name: "Греческий", price: "2 090 ₸" },
+      { name: "Хрустящие баклажаны", price: "2 290 ₸" },
+    ],
+  },
+  {
+    key: "hot",
+    label: "Горячее",
+    photo: "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos/menu-hot.jpg",
+    items: [
+      { name: "Вареники", price: "1 390 ₸" },
+      { name: "Пельмени", price: "1 790 ₸" },
+      { name: "Манты", price: "2 390 ₸" },
+      { name: "Бефстроганов", price: "2 390 ₸" },
+      { name: "Фетучини", price: "2 290 ₸" },
+    ],
   },
 ] as const;
 

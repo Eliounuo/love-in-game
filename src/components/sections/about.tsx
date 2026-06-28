@@ -1,12 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { WhatsAppButton } from "@/components/ui/whatsapp-button";
+
+const INTERIOR = "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos/interior.jpg";
+const LOGO_CARD = "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos/logo-card.jpg";
 
 const PERKS = [
   { icon: "🎮", text: "PlayStation 5 нового поколения" },
   { icon: "🛋️", text: "Уютные VIP-зоны" },
-  { icon: "🍔", text: "Своя кухня и бар" },
+  { icon: "🍽️", text: "Полноценное меню кухни" },
   { icon: "🏆", text: "Турниры с призами" },
 ];
 
@@ -54,7 +58,7 @@ export function About() {
           />
         </motion.div>
 
-        {/* Visual */}
+        {/* Real photos */}
         <motion.div
           initial={{ opacity: 0, x: 30 }}
           whileInView={{ opacity: 1, x: 0 }}
@@ -62,18 +66,32 @@ export function About() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="relative"
         >
-          <div className="aspect-[4/5] rounded-3xl bg-[#E7D8CC] border border-[#B7774E]/10 overflow-hidden relative">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-8xl mb-4">🎮</div>
-                <div className="font-display text-2xl text-[#B7774E]">Love in Game</div>
-                <div className="text-[#55504C] text-sm mt-2">Gaming Café · Алматы</div>
-              </div>
-            </div>
-            <div className="absolute bottom-0 right-0 w-32 h-32 bg-[#B7774E]/10 rounded-tl-3xl" />
-            <div className="absolute top-0 left-0 w-20 h-20 bg-[#C99268]/10 rounded-br-3xl" />
+          {/* Main interior photo */}
+          <div className="relative aspect-[4/3] rounded-3xl overflow-hidden border border-[#B7774E]/10 shadow-2xl">
+            <Image
+              src={INTERIOR}
+              alt="Интерьер Love in Game"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover object-center"
+              style={{ filter: "brightness(1.03) contrast(1.06) saturate(1.12)" }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1D1B19]/25 via-transparent to-transparent" />
           </div>
-          <div className="absolute -bottom-5 -left-5 glass rounded-2xl px-5 py-4 shadow-lg">
+
+          {/* Logo card floating bottom-left */}
+          <div className="absolute -bottom-6 -left-4 w-32 h-32 rounded-2xl overflow-hidden shadow-xl border border-[#B7774E]/20">
+            <Image
+              src={LOGO_CARD}
+              alt="Love in Game логотип"
+              fill
+              sizes="128px"
+              className="object-cover"
+            />
+          </div>
+
+          {/* Rating badge */}
+          <div className="absolute -top-4 -right-4 glass rounded-2xl px-4 py-3 shadow-lg">
             <div className="font-display text-2xl font-semibold text-[#B7774E]">5★</div>
             <div className="text-xs text-[#55504C] mt-0.5">Рейтинг гостей</div>
           </div>

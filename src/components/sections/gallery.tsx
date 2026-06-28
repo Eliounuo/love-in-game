@@ -1,23 +1,21 @@
-"use client";
+﻿"use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
-import type { GalleryItem } from "@/lib/types";
 import { WhatsAppButton } from "@/components/ui/whatsapp-button";
 
-type Props = { gallery: GalleryItem[] };
+const BASE = "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos";
 
-const PLACEHOLDER_ITEMS = [
-  { label: "Игровые зоны", emoji: "🛋️" },
-  { label: "VIP комнаты", emoji: "👑" },
-  { label: "Кухня и бар", emoji: "🍔" },
-  { label: "Турниры", emoji: "🏆" },
-  { label: "Консоли PS5", emoji: "🎮" },
-  { label: "Атмосфера", emoji: "✨" },
+const REAL_PHOTOS = [
+  { src: `${BASE}/interior.jpg`, alt: "Уютный интерьер Love in Game", span: "md:col-span-2" },
+  { src: `${BASE}/menu-pizza.jpg`, alt: "Пицца", span: "" },
+  { src: `${BASE}/menu-breakfast.jpg`, alt: "Завтраки", span: "" },
+  { src: `${BASE}/lunch-1.jpg`, alt: "Бизнес-ланч", span: "" },
+  { src: `${BASE}/menu-soups.jpg`, alt: "Супы", span: "" },
+  { src: `${BASE}/lunch-2.jpg`, alt: "Блюда кухни", span: "" },
 ];
 
-export function GallerySection({ gallery }: Props) {
-  const items = gallery.length > 0 ? gallery : null;
-
+export function GallerySection() {
   return (
     <section id="gallery" className="py-28 bg-[#EFE3D8]">
       <div className="max-w-7xl mx-auto px-5 md:px-8">
@@ -34,50 +32,28 @@ export function GallerySection({ gallery }: Props) {
           </h2>
         </motion.div>
 
-        {items ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {items.map((item, i) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, scale: 0.97 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.4, delay: i * 0.06 }}
-                className={[
-                  "overflow-hidden rounded-2xl",
-                  i === 0 ? "md:col-span-2" : "",
-                ].join(" ")}
-              >
-                <img
-                  src={item.url}
-                  alt={item.caption ?? "Love in Game"}
-                  className="w-full h-64 object-cover hover:scale-105 transition-transform duration-500"
-                />
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {PLACEHOLDER_ITEMS.map(({ label, emoji }, i) => (
-              <motion.div
-                key={label}
-                initial={{ opacity: 0, scale: 0.97 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.4, delay: i * 0.06 }}
-                className={[
-                  "glass rounded-2xl flex items-center justify-center",
-                  i === 0 ? "md:col-span-2 h-64" : "h-48",
-                ].join(" ")}
-              >
-                <div className="text-center">
-                  <div className="text-5xl mb-3">{emoji}</div>
-                  <div className="text-sm text-[#55504C] font-medium">{label}</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {REAL_PHOTOS.map(({ src, alt, span }, i) => (
+            <motion.div
+              key={src}
+              initial={{ opacity: 0, scale: 0.97 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.4, delay: i * 0.06 }}
+              className={["relative overflow-hidden rounded-2xl group", span, i === 0 ? "h-72" : "h-52"].join(" ")}
+            >
+              <Image
+                src={src}
+                alt={alt}
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                style={{ filter: "brightness(1.02) contrast(1.06) saturate(1.1)" }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1D1B19]/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </motion.div>
+          ))}
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}

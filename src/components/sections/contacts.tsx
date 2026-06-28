@@ -1,29 +1,21 @@
-"use client";
+﻿"use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { MapPin, Phone, Clock, Link } from "lucide-react";
+import { MapPin, Phone, Clock, ExternalLink } from "lucide-react";
 import { WhatsAppButton } from "@/components/ui/whatsapp-button";
-import type { Contact } from "@/lib/types";
+import { ADDRESS, PHONE_DISPLAY, HOURS, INSTAGRAM_URL } from "@/lib/constants";
 
-type Props = { contacts: Contact[] };
+const EXTERIOR = "https://yppsswknejekkjhigouv.supabase.co/storage/v1/object/public/photos/exterior.jpg";
 
-function getContact(contacts: Contact[], type: string) {
-  return contacts.find((c) => c.type === type)?.value ?? "";
-}
+const INFO = [
+  { icon: <MapPin size={18} />, label: "Адрес", value: ADDRESS },
+  { icon: <Clock size={18} />, label: "Время работы", value: HOURS },
+  { icon: <Phone size={18} />, label: "Телефон / WhatsApp", value: PHONE_DISPLAY },
+  { icon: <ExternalLink size={18} />, label: "Instagram", value: "@love.in.game1" },
+];
 
-export function ContactsSection({ contacts }: Props) {
-  const phone = getContact(contacts, "phone");
-  const address = getContact(contacts, "address");
-  const hours = getContact(contacts, "hours");
-  const instagram = getContact(contacts, "instagram");
-
-  const INFO = [
-    { icon: <MapPin size={18} />, label: "Адрес", value: address || "г. Алматы" },
-    { icon: <Clock size={18} />, label: "Время работы", value: hours || "Ежедневно: 10:00 – 02:00" },
-    { icon: <Phone size={18} />, label: "Телефон", value: phone || "+7 700 000 00 00" },
-    { icon: <Link size={18} />, label: "Instagram", value: instagram ? `@${instagram}` : "@loveingame" },
-  ];
-
+export function ContactsSection() {
   return (
     <section id="contacts" className="py-28 bg-[#EFE3D8]">
       <div className="max-w-7xl mx-auto px-5 md:px-8">
@@ -60,13 +52,22 @@ export function ContactsSection({ contacts }: Props) {
               </div>
             ))}
 
-            <div className="pt-4">
+            <div className="flex gap-3 pt-4">
               <WhatsAppButton
                 text="Написать в WhatsApp"
                 size="md"
                 message="Хочу узнать подробнее о Love in Game"
-                className="w-full justify-center"
+                className="flex-1 justify-center"
               />
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-12 px-5 inline-flex items-center justify-center rounded-full border border-[#B7774E]/30 text-[#B7774E] hover:bg-[#B7774E]/10 transition-all duration-200 text-sm font-medium gap-2"
+              >
+                <ExternalLink size={16} />
+                Instagram
+              </a>
             </div>
           </motion.div>
 
@@ -75,12 +76,20 @@ export function ContactsSection({ contacts }: Props) {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.6 }}
-            className="glass rounded-2xl overflow-hidden aspect-[4/3] flex items-center justify-center"
+            className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-xl"
           >
-            <div className="text-center">
-              <MapPin size={40} className="text-[#B7774E] mx-auto mb-3" />
-              <p className="font-display text-xl text-[#1D1B19]">Love in Game</p>
-              <p className="text-[#55504C] text-sm mt-1">{address || "г. Алматы"}</p>
+            <Image
+              src={EXTERIOR}
+              alt="Love in Game — фасад здания, ул. Уалиханова 212/2"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover object-center"
+              style={{ filter: "brightness(1.04) contrast(1.05) saturate(1.08)" }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1D1B19]/50 via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-0 p-6">
+              <p className="font-display text-xl text-white">Love in Game</p>
+              <p className="text-white/70 text-sm mt-1">{ADDRESS}</p>
             </div>
           </motion.div>
         </div>
@@ -88,3 +97,4 @@ export function ContactsSection({ contacts }: Props) {
     </section>
   );
 }
+
