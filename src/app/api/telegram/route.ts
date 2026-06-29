@@ -49,9 +49,11 @@ async function executeResult(result: AgentResult, db: ReturnType<typeof createSe
     if (naturalCol && naturalVal) {
       const { [naturalCol]: _k, ...updateData } = rest as Record<string, unknown>;
       if (Object.keys(updateData).length === 0) return "❌ Нечего обновлять";
-      const { error } = await db.from(table).update(updateData).eq(naturalCol, naturalVal);
-      if (!error) revalidatePath("/");
-      return error ? `Ошибка: ${error.message}` : `✅ ${entity} "${naturalVal}" обновлён(а)`;
+      const { data: updated, error } = await db.from(table).update(updateData).eq(naturalCol, naturalVal).select();
+      if (error) return `Ошибка: ${error.message}`;
+      if (!updated || updated.length === 0) return `⚠️ Не найдено: "${naturalVal}" в ${table}. Проверь название.`;
+      revalidatePath("/");
+      return `✅ ${entity} "${naturalVal}" обновлён(а)`;
     }
     return "❌ Укажи название тарифа, игры или другого объекта";
   }
