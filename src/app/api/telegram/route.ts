@@ -107,22 +107,23 @@ export async function POST(req: NextRequest) {
 
   const db = createServerClient();
 
-  // 1. Regex fast-path (instant, no API)
-  let result: AgentResult | null = tryRegex(text);
+  await sendTG(chatId, "⏳ Думаю...");
 
-  // 2. Gemini AI if regex didn't match
-  if (!result) {
-    await sendTG(chatId, "⏳ Думаю...");
-    try {
-      result = await parseAdminMessage(text);
-    } catch (err) {
-      const errMsg = String(err).slice(0, 200);
-      if (errMsg.includes("GEMINI_API_KEY")) {
-        await sendTG(chatId,
-          `⚠️ GEMINI_API_KEY не установлен.\n\nПолучи бесплатный ключ: aistudio.google.com\nДобавь в Vercel → Settings → Environment Variables`);
-      } else {
-        await sendTG(chatId, `❌ AI ошибка: ${errMsg}\n\nПопробуй /help для списка быстрых команд.`);
-      }
+  // 1. Gemini AI first (understands any phrasing)
+  let result: AgentResult | null = null;
+  try {
+    result = await parseAdminMessage(text);
+  } catch (err) {
+    const errMsg = String(err).slice(0, 200);
+    if (errMsg.includes("GEMINI_API_KEY")) {
+      await sendTG(chatId,
+        `⚠️ GEMINI_API_KEY не установлен.\n\nПолучи бесплатный ключ: aistudio.google.com\nДобавь в Vercel → Settings → Environment Variables`);
+      return new Response("OK");
+    }
+    // 2. Regex fallback if Gemini failed (quota/network error)
+    result = tryRegex(text);
+    if (!result) {
+      await sendTG(chatId, `❌ AI недоступен: ${errMsg}\n\nПопробуй /help для быстрых команд.`);
       return new Response("OK");
     }
   }
