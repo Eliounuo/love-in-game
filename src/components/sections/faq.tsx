@@ -4,9 +4,17 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { FAQ_ITEMS } from "@/lib/constants";
+import type { FaqItem } from "@/lib/types";
 
-export function FaqSection() {
+type Props = { faqItems: FaqItem[] };
+
+export function FaqSection({ faqItems }: Props) {
   const [open, setOpen] = useState<number | null>(null);
+
+  const items =
+    faqItems.length > 0
+      ? faqItems.map((f) => ({ q: f.question, a: f.answer }))
+      : FAQ_ITEMS.map((f) => ({ q: f.q, a: f.a }));
 
   return (
     <section id="faq" className="py-28 bg-[#E7D8CC]">
@@ -25,7 +33,7 @@ export function FaqSection() {
         </motion.div>
 
         <div className="space-y-3">
-          {FAQ_ITEMS.map(({ q, a }, i) => (
+          {items.map(({ q, a }, i) => (
             <motion.div
               key={q}
               initial={{ opacity: 0, y: 16 }}
@@ -47,7 +55,6 @@ export function FaqSection() {
                   <ChevronDown size={18} />
                 </motion.div>
               </button>
-
               <AnimatePresence initial={false}>
                 {open === i && (
                   <motion.div

@@ -1,4 +1,4 @@
-﻿import { Hero } from "@/components/sections/hero";
+import { Hero } from "@/components/sections/hero";
 import { About } from "@/components/sections/about";
 import { WhyUs } from "@/components/sections/why-us";
 import { PricingSection } from "@/components/sections/pricing";
@@ -12,15 +12,18 @@ import { FaqSection } from "@/components/sections/faq";
 import { ContactsSection } from "@/components/sections/contacts";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { getPricing, getGames, getEvents } from "@/lib/queries";
+import { getPricing, getGames, getEvents, getMenuCategories, getMenuItems, getFaqItems } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [pricing, games, events] = await Promise.all([
+  const [pricing, games, events, menuCategories, menuItems, faqItems] = await Promise.all([
     getPricing(),
     getGames(),
     getEvents(),
+    getMenuCategories(),
+    getMenuItems(),
+    getFaqItems(),
   ]);
 
   return (
@@ -32,11 +35,11 @@ export default async function Home() {
       <PricingSection pricing={pricing} />
       <GamesSection games={games} />
       <GallerySection />
-      <MenuSection />
+      <MenuSection categories={menuCategories} items={menuItems} />
       <BusinessLunch />
       <TournamentsSection events={events} />
       <ReviewsSection />
-      <FaqSection />
+      <FaqSection faqItems={faqItems} />
       <ContactsSection />
       <Footer />
     </div>

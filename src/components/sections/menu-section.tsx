@@ -5,12 +5,24 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { MENU_CATEGORIES } from "@/lib/constants";
 import { WhatsAppButton } from "@/components/ui/whatsapp-button";
+import type { MenuCategory, MenuItem } from "@/lib/types";
 
-type CategoryKey = typeof MENU_CATEGORIES[number]["key"];
+type Props = { categories: MenuCategory[]; items: MenuItem[] };
 
-export function MenuSection() {
-  const [active, setActive] = useState<CategoryKey>(MENU_CATEGORIES[0].key);
-  const current = MENU_CATEGORIES.find((c) => c.key === active)!;
+export function MenuSection({ categories, items }: Props) {
+  // Fallback to hardcoded constants if Supabase tables not yet created
+  const cats: { key: string; label: string; photo: string }[] =
+    categories.length > 0
+      ? categories.map((c) => ({ key: c.key, label: c.label, photo: c.photo_url ?? "" }))
+      : MENU_CATEGORIES.map((c) => ({ key: c.key, label: c.label, photo: c.photo }));
+
+  const [active, setActive] = useState(cats[0]?.key ?? "pizza");
+  const current = cats.find((c) => c.key === active) ?? cats[0];
+
+  const currentItems: { name: string; price: string }[] =
+    items.length > 0
+      ? items.filter((i) => i.category_key === active)
+      : [...(MENU_CATEGORIES.find((c) => c.key === active)?.items ?? [])];
 
   return (
     <section id="menu" className="py-28 bg-[#E7D8CC]">
@@ -32,7 +44,7 @@ export function MenuSection() {
         </motion.div>
 
         <div className="flex flex-wrap justify-center gap-2 mb-10">
-          {MENU_CATEGORIES.map(({ key, label }) => (
+          {cats.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setActive(key)}
@@ -57,24 +69,25 @@ export function MenuSection() {
             transition={{ duration: 0.3 }}
             className="grid md:grid-cols-2 gap-8 items-stretch"
           >
-            {/* Photo — food at top, use object-top to avoid cropping food */}
             <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-xl group">
-              <Image
-                src={current.photo}
-                alt={current.label}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover object-top transition-transform duration-700 group-hover:scale-105"
-                style={{ filter: "brightness(1.03) contrast(1.06) saturate(1.1)" }}
-              />
+              {current?.photo && (
+                <Image
+                  src={current.photo}
+                  alt={current.label}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                  style={{ filter: "brightness(1.03) contrast(1.06) saturate(1.1)" }}
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-[#1D1B19]/60 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 p-6">
-                <span className="font-display text-2xl text-white font-light">{current.label}</span>
+                <span className="font-display text-2xl text-white font-light">{current?.label}</span>
               </div>
             </div>
 
             <div className="flex flex-col justify-center gap-3">
-              {current.items.map(({ name, price }, i) => (
+              {currentItems.map(({ name, price }, i) => (
                 <motion.div
                   key={name}
                   initial={{ opacity: 0, x: 12 }}
@@ -92,7 +105,7 @@ export function MenuSection() {
                 <WhatsAppButton
                   text="Заказать сейчас"
                   size="md"
-                  message={`Хочу заказать из категории "${current.label}" в Love in Game`}
+                  message={`Хочу заказать из категории "${current?.label}" в Love in Game`}
                 />
               </div>
             </div>
