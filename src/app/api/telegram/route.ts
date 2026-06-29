@@ -45,17 +45,24 @@ async function executeResult(result: AgentResult, db: ReturnType<typeof createSe
       return error ? `Ошибка: ${error.message}` : `✅ ${entity} обновлён(а)`;
     }
     const naturalCol = NATURAL_KEY[table];
-    const naturalVal = naturalCol ? (rest[naturalCol] as string | undefined) : undefined;
+    const naturalVal = naturalCol ? ((rest[naturalCol] as string | undefined)?.trim()) : undefined;
     if (naturalCol && naturalVal) {
       const { [naturalCol]: _k, ...updateData } = rest as Record<string, unknown>;
       if (Object.keys(updateData).length === 0) return "❌ Нечего обновлять";
-      const { data: updated, error } = await db.from(table).update(updateData).eq(naturalCol, naturalVal).select();
+      // ilike = case-insensitive match → "стандарт" finds "Стандарт"
+      const { data: updated, error } = await db.from(table).update(updateData).ilike(naturalCol, naturalVal).select();
       if (error) return `Ошибка: ${error.message}`;
-      if (!updated || updated.length === 0) return `⚠️ Не найдено: "${naturalVal}" в ${table}. Проверь название.`;
+      if (!updated || updated.length === 0) {
+        // Show what's actually in the table
+        const { data: rows } = await db.from(table).select(naturalCol).limit(10);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const available = rows?.map((r: any) => r[naturalCol]).join(", ") ?? "—";
+        return `⚠️ "${naturalVal}" не найдено. Есть: ${available}`;
+      }
       revalidatePath("/");
-      return `✅ ${entity} "${naturalVal}" обновлён(а)`;
+      return `✅ Обновлено`;
     }
-    return "❌ Укажи название тарифа, игры или другого объекта";
+    return "❌ Укажи название";
   }
 
   if (result.action === "delete") {
