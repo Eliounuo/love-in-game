@@ -14,6 +14,16 @@ async function sendTG(chatId: number | string, text: string) {
   });
 }
 
+// Natural identifier columns per table (used when no id in payload)
+const NATURAL_KEY: Record<string, string> = {
+  pricing: "name",
+  games: "title",
+  events: "title",
+  promotions: "title",
+  contacts: "type",
+  settings: "key",
+};
+
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return new Response("Bad request", { status: 400 }); }
@@ -40,14 +50,13 @@ export async function POST(req: NextRequest) {
       `🎮 <b>Love in Game — AI Ассистент</b>\n\n` +
       `Привет! Я умею:\n\n` +
       `<b>📋 Управлять данными:</b>\n` +
+      `• Измени цену тарифа Стандарт на 2500 тенге\n` +
       `• Добавь игру FIFA 26 жанр Спорт\n` +
-      `• Измени цену VIP на 9000 тенге\n` +
       `• Добавь акцию "Скидка 20% в будни"\n` +
-      `• Добавь турнир по FIFA 25 на 15 июля\n\n` +
-      `<b>💬 Отвечать на вопросы:</b>\n` +
-      `• Какие тарифы?\n` +
-      `• Как связаться с гостями?\n` +
-      `• Расскажи о кафе\n\n` +
+      `• Добавь турнир по FIFA на 15 июля, приз 10000 тенге\n\n` +
+      `<b>💬 Ответить на вопросы:</b>\n` +
+      `• Какие тарифы у нас?\n` +
+      `• Как связаться с гостями?\n\n` +
       `Пиши свободно на русском!`
     );
     return new Response("OK");
@@ -58,17 +67,17 @@ export async function POST(req: NextRequest) {
   const result = await parseAdminMessage(text);
 
   if (!result) {
-    await sendTG(chatId, "❌ Не понял команду. Попробуй /help");
+    await sendTG(chatId, "❌ Не понял. Попробуй /help");
     return new Response("OK");
   }
 
-  // Chat mode — just reply
+  // Chat mode
   if (result.type === "chat") {
     await sendTG(chatId, result.message);
     return new Response("OK");
   }
 
-  // Command mode — execute
+  // Command mode
   const db = createServerClient();
   let resultText = "";
 
@@ -87,40 +96,52 @@ export async function POST(req: NextRequest) {
       const { error } = await db.from(table).insert(payload);
       resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} добавлен(а)`;
       if (!error) revalidatePath("/");
+
     } else if (result.action === "update") {
-      if (table === "settings" && payload.key) {
-        const { error } = await db.from("settings").upsert({
-          key: payload.key as string, value: payload.value as string, updated_at: new Date().toISOString(),
-        });
-        resultText = error ? `Ошибка: ${error.message}` : `✅ Настройка обновлена`;
-        if (!error) revalidatePath("/");
-      } else if (table === "contacts" && payload.type) {
-        const { error } = await db.from("contacts").upsert({
-          type: payload.type as string, value: payload.value as string, updated_at: new Date().toISOString(),
-        });
-        resultText = error ? `Ошибка: ${error.message}` : `✅ Контакт обновлён`;
+      const raw = payload as Record<string, unknown>;
+      const { id, ...rest } = raw as { id?: string } & Record<string, unknown>;
+
+      if (id) {
+        // Update by explicit UUID
+        const { error } = await db.from(table).update(rest).eq("id", id);
+        resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} обновлён(а)`;
         if (!error) revalidatePath("/");
       } else {
-        const { id, ...rest } = payload as { id?: string } & Record<string, unknown>;
-        if (id) {
-          const { error } = await db.from(table).update(rest).eq("id", id);
-          resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} обновлён(а)`;
-          if (!error) revalidatePath("/");
+        // Update by natural key (name/title/type/key)
+        const naturalCol = NATURAL_KEY[table];
+        const naturalVal = naturalCol ? (rest[naturalCol] as string | undefined) : undefined;
+
+        if (naturalCol && naturalVal) {
+          // Remove the key field from the data being SET
+          const { [naturalCol]: _key, ...updateData } = rest as Record<string, unknown>;
+          if (Object.keys(updateData).length === 0) {
+            resultText = "❌ Нечего обновлять — укажи новое значение";
+          } else {
+            const { error } = await db.from(table).update(updateData).eq(naturalCol, naturalVal);
+            resultText = error
+              ? `Ошибка: ${error.message}`
+              : `✅ ${entity} "${naturalVal}" обновлён(а)`;
+            if (!error) revalidatePath("/");
+          }
         } else {
-          resultText = "❌ Не указан id для обновления";
+          resultText = `❌ Не хватает идентификатора. Укажи название/имя тарифа, игры и т.д.`;
         }
       }
+
     } else if (result.action === "delete") {
       const { id } = payload as { id: string };
       const { error } = await db.from(table).delete().eq("id", id);
       resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} удалён(а)`;
       if (!error) revalidatePath("/");
+
     } else if (result.action === "activate" || result.action === "deactivate") {
       const { id } = payload as { id: string };
-      const { error } = await db.from(table).update({ active: result.action === "activate" }).eq("id", id);
-      resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} ${result.action === "activate" ? "активирован(а)" : "деактивирован(а)"}`;
+      const active = result.action === "activate";
+      const { error } = await db.from(table).update({ active }).eq("id", id);
+      resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} ${active ? "активирован(а)" : "деактивирован(а)"}`;
       if (!error) revalidatePath("/");
     }
+
   } catch (err) {
     resultText = `❌ Ошибка: ${String(err)}`;
   }
