@@ -11,68 +11,99 @@ export type AgentResult =
     }
   | { type: "chat"; message: string };
 
+const TARIFF_MAP: Record<string, string> = {
+  "стандарт": "Стандарт", "standard": "Стандарт",
+  "комфорт": "Комфорт",   "comfort":  "Комфорт",
+  "вечерний": "Вечерний", "evening":  "Вечерний",
+  "vip": "VIP",
+};
+
+// Regex fallback for the most common admin commands
+function tryRegex(text: string): AgentResult | null {
+  const t = text.toLowerCase().replace(/ё/g, "е");
+
+  // Update pricing price: "измени цену тарифа стандарт на 2500" / "стандарт поставь 2500"
+  const priceRe = /(?:цену?\s+)?(?:тарифа?\s+)?(стандарт|комфорт|вечерний|vip).*?(\d{3,6})/i;
+  const pm = t.match(priceRe);
+  if (pm && (t.includes("цен") || t.includes("измен") || t.includes("поставь") || t.includes("установ") || t.includes("обнов"))) {
+    const name = TARIFF_MAP[pm[1].toLowerCase()];
+    const price = parseInt(pm[2]);
+    if (name && price >= 100) {
+      return { type: "command", action: "update", entity: "pricing", payload: { name, price } };
+    }
+  }
+
+  // Add game: "добавь игру Elden Ring жанр RPG"
+  const addGameRe = /добавь\s+игр[ую]\s+(.+?)\s+жанр\s+(\S+)/i;
+  const agm = text.match(addGameRe);
+  if (agm) {
+    return { type: "command", action: "add", entity: "game",
+      payload: { title: agm[1].trim(), genre: agm[2].trim(), active: true } };
+  }
+
+  // Update phone/whatsapp
+  const phoneRe = /(?:телефон|whatsapp|вотсап).*?(\+?[0-9][\d\s\-]{9,})/i;
+  const phm = text.match(phoneRe);
+  if (phm && (t.includes("измен") || t.includes("обнов") || t.includes("поставь"))) {
+    return { type: "command", action: "update", entity: "contact",
+      payload: { type: "phone", value: phm[1].trim() } };
+  }
+
+  return null;
+}
+
 const SYSTEM_PROMPT = `You are an AI admin assistant for "Love in Game" — a PlayStation 5 gaming cafe in Кокшетау, Kazakhstan.
 
 You handle TWO types of messages:
 1. ADMIN COMMANDS — to add/update/delete/activate/deactivate business data
-2. QUESTIONS/CHAT — questions about the business or general conversation
+2. QUESTIONS/CHAT — questions about the business
 
 Business info:
-- Address: г. Кокшетау, ул. Уалиханова 212/2
-- Hours: Ежедневно 10:00 – 02:00
-- Phone: +7 707 032 70 00
-- Instagram: @love.in.game1
 - Tariffs: Стандарт 2000тг/1ч, Комфорт 3500тг/2ч, Вечерний 5000тг/3ч, VIP 8000тг/4ч
 - Business lunch: 2290тг, daily 12:00-16:00
+- Address: г. Кокшетау, ул. Уалиханова 212/2, Hours: 10:00-02:00
+- Phone: +7 707 032 70 00, Instagram: @love.in.game1
 
-Available entities:
+Entities:
 - game: { title, genre, cover_url?, active? }
 - pricing: { name, duration, players, price (number KZT), features (string[]), popular?, active? }
-- promotion: { title, description, discount?, expires_at? (ISO date), active? }
+- promotion: { title, description, discount?, expires_at?, active? }
 - gallery: { url, caption?, sort_order? }
 - contact: { type: "whatsapp"|"phone"|"instagram"|"address"|"hours", value }
 - event: { title, description, event_date (ISO datetime), prize?, active? }
 - setting: { key: "whatsapp_number"|"phone"|"address"|"hours"|"instagram", value }
 
-CRITICAL RULES FOR UPDATE COMMANDS:
-- For pricing: ALWAYS include "name" field in payload (e.g. "name": "Стандарт") plus only the changed fields
-- For games: ALWAYS include "title" field in payload plus only the changed fields
-- For events/promotions: ALWAYS include "title" field in payload plus only the changed fields
-- For contacts: ALWAYS include "type" field in payload plus "value"
-- Do NOT include unchanged fields
-- "price" must always be a number (not string)
+RULES FOR UPDATE:
+- pricing: include "name" (Стандарт/Комфорт/Вечерний/VIP) + changed fields only
+- games: include "title" + changed fields only
+- events/promotions: include "title" + changed fields only
+- contacts: include "type" + "value"
+- price is always a NUMBER
 
 Examples:
 "измени цену тарифа стандарт на 2500" -> {"type":"command","action":"update","entity":"pricing","payload":{"name":"Стандарт","price":2500}}
 "добавь игру Elden Ring жанр RPG" -> {"type":"command","action":"add","entity":"game","payload":{"title":"Elden Ring","genre":"RPG","active":true}}
-"измени телефон на +7 701 123 45 67" -> {"type":"command","action":"update","entity":"contact","payload":{"type":"phone","value":"+7 701 123 45 67"}}
 
-For ADMIN COMMANDS return exactly:
-{ "type": "command", "action": "add"|"update"|"delete"|"activate"|"deactivate", "entity": "...", "payload": {...} }
+For COMMANDS: { "type": "command", "action": "...", "entity": "...", "payload": {...} }
+For CHAT: { "type": "chat", "message": "ответ на русском, до 300 символов" }
 
-For QUESTIONS/CHAT return exactly (respond in Russian, friendly, max 300 chars):
-{ "type": "chat", "message": "ответ на русском" }
+Return valid JSON only.`;
 
-IMPORTANT: Always return valid JSON only. No text outside JSON.`;
-
-export async function parseAdminMessage(text: string): Promise<AgentResult | null> {
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: text },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0,
-      max_tokens: 512,
-    });
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
-    return JSON.parse(raw) as AgentResult;
-  } catch {
-    return null;
-  }
+export async function parseAdminMessage(text: string): Promise<AgentResult> {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: text },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0,
+    max_tokens: 512,
+  });
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) throw new Error("OpenAI вернул пустой ответ");
+  return JSON.parse(raw) as AgentResult;
 }
 
+export { tryRegex };
 export const parseAdminCommand = parseAdminMessage;

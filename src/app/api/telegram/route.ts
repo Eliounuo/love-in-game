@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
-import { parseAdminMessage } from "@/lib/ai-agent";
+import { parseAdminMessage, tryRegex } from "@/lib/ai-agent";
+import type { AgentResult } from "@/lib/ai-agent";
 
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -14,7 +15,6 @@ async function sendTG(chatId: number | string, text: string) {
   });
 }
 
-// Natural identifier columns per table (used when no id in payload)
 const NATURAL_KEY: Record<string, string> = {
   pricing: "name",
   games: "title",
@@ -24,13 +24,73 @@ const NATURAL_KEY: Record<string, string> = {
   settings: "key",
 };
 
+async function executeResult(result: AgentResult, db: ReturnType<typeof createServerClient>): Promise<string> {
+  if (result.type === "chat") return result.message;
+
+  const { entity, payload } = result;
+  const table =
+    entity === "contact" ? "contacts"
+    : entity === "setting" ? "settings"
+    : entity === "event" ? "events"
+    : entity === "gallery" ? "gallery"
+    : entity === "game" ? "games"
+    : entity === "promotion" ? "promotions"
+    : "pricing";
+
+  if (result.action === "add") {
+    const { error } = await db.from(table).insert(payload);
+    if (!error) revalidatePath("/");
+    return error ? `Ошибка: ${error.message}` : `✅ ${entity} добавлен(а)`;
+  }
+
+  if (result.action === "update") {
+    const raw = payload as Record<string, unknown>;
+    const { id, ...rest } = raw as { id?: string } & Record<string, unknown>;
+
+    if (id) {
+      const { error } = await db.from(table).update(rest).eq("id", id);
+      if (!error) revalidatePath("/");
+      return error ? `Ошибка: ${error.message}` : `✅ ${entity} обновлён(а)`;
+    }
+
+    const naturalCol = NATURAL_KEY[table];
+    const naturalVal = naturalCol ? (rest[naturalCol] as string | undefined) : undefined;
+
+    if (naturalCol && naturalVal) {
+      const { [naturalCol]: _k, ...updateData } = rest as Record<string, unknown>;
+      if (Object.keys(updateData).length === 0) return "❌ Нечего обновлять";
+      const { error } = await db.from(table).update(updateData).eq(naturalCol, naturalVal);
+      if (!error) revalidatePath("/");
+      return error ? `Ошибка: ${error.message}` : `✅ ${entity} "${naturalVal}" обновлён(а)`;
+    }
+
+    return "❌ Укажи название тарифа, игры или другого объекта";
+  }
+
+  if (result.action === "delete") {
+    const { id } = payload as { id: string };
+    const { error } = await db.from(table).delete().eq("id", id);
+    if (!error) revalidatePath("/");
+    return error ? `Ошибка: ${error.message}` : `✅ ${entity} удалён(а)`;
+  }
+
+  if (result.action === "activate" || result.action === "deactivate") {
+    const { id } = payload as { id: string };
+    const active = result.action === "activate";
+    const { error } = await db.from(table).update({ active }).eq("id", id);
+    if (!error) revalidatePath("/");
+    return error ? `Ошибка: ${error.message}` : `✅ ${entity} ${active ? "активирован(а)" : "деактивирован(а)"}`;
+  }
+
+  return "❌ Неизвестное действие";
+}
+
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return new Response("Bad request", { status: 400 }); }
 
   const message = (body.message ?? body.edited_message) as {
-    chat?: { id?: number };
-    text?: string;
+    chat?: { id?: number }; text?: string;
   } | undefined;
 
   if (!message?.text || !message?.chat?.id) return new Response("OK");
@@ -45,107 +105,47 @@ export async function POST(req: NextRequest) {
   const text = message.text.trim();
 
   if (text === "/start" || text === "/help") {
-    await sendTG(
-      chatId,
+    await sendTG(chatId,
       `🎮 <b>Love in Game — AI Ассистент</b>\n\n` +
-      `Привет! Я умею:\n\n` +
-      `<b>📋 Управлять данными:</b>\n` +
-      `• Измени цену тарифа Стандарт на 2500 тенге\n` +
-      `• Добавь игру FIFA 26 жанр Спорт\n` +
+      `<b>📋 Команды:</b>\n` +
+      `• Измени цену тарифа Стандарт на 2500\n` +
+      `• Добавь игру Elden Ring жанр RPG\n` +
       `• Добавь акцию "Скидка 20% в будни"\n` +
-      `• Добавь турнир по FIFA на 15 июля, приз 10000 тенге\n\n` +
-      `<b>💬 Ответить на вопросы:</b>\n` +
-      `• Какие тарифы у нас?\n` +
-      `• Как связаться с гостями?\n\n` +
-      `Пиши свободно на русском!`
+      `• Добавь турнир по FIFA на 15 июля, приз 10000\n\n` +
+      `<b>💬 Вопросы:</b>\n` +
+      `• Какие тарифы?\n` +
+      `• Расскажи о кафе`
     );
     return new Response("OK");
   }
 
   await sendTG(chatId, "⏳ Думаю...");
 
-  const result = await parseAdminMessage(text);
+  const db = createServerClient();
+
+  // 1. Try OpenAI
+  let result: AgentResult | null = null;
+  let aiError = "";
+  try {
+    result = await parseAdminMessage(text);
+  } catch (err) {
+    aiError = String(err);
+    // 2. Fallback: regex parser
+    result = tryRegex(text);
+  }
 
   if (!result) {
-    await sendTG(chatId, "❌ Не понял. Попробуй /help");
+    const hint = aiError ? `\n\n🔧 Ошибка AI: ${aiError.slice(0, 150)}` : "";
+    await sendTG(chatId, `❌ Не понял команду. Попробуй /help${hint}`);
     return new Response("OK");
   }
-
-  // Chat mode
-  if (result.type === "chat") {
-    await sendTG(chatId, result.message);
-    return new Response("OK");
-  }
-
-  // Command mode
-  const db = createServerClient();
-  let resultText = "";
 
   try {
-    const { entity, payload } = result;
-    const table =
-      entity === "contact" ? "contacts"
-      : entity === "setting" ? "settings"
-      : entity === "event" ? "events"
-      : entity === "gallery" ? "gallery"
-      : entity === "game" ? "games"
-      : entity === "promotion" ? "promotions"
-      : "pricing";
-
-    if (result.action === "add") {
-      const { error } = await db.from(table).insert(payload);
-      resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} добавлен(а)`;
-      if (!error) revalidatePath("/");
-
-    } else if (result.action === "update") {
-      const raw = payload as Record<string, unknown>;
-      const { id, ...rest } = raw as { id?: string } & Record<string, unknown>;
-
-      if (id) {
-        // Update by explicit UUID
-        const { error } = await db.from(table).update(rest).eq("id", id);
-        resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} обновлён(а)`;
-        if (!error) revalidatePath("/");
-      } else {
-        // Update by natural key (name/title/type/key)
-        const naturalCol = NATURAL_KEY[table];
-        const naturalVal = naturalCol ? (rest[naturalCol] as string | undefined) : undefined;
-
-        if (naturalCol && naturalVal) {
-          // Remove the key field from the data being SET
-          const { [naturalCol]: _key, ...updateData } = rest as Record<string, unknown>;
-          if (Object.keys(updateData).length === 0) {
-            resultText = "❌ Нечего обновлять — укажи новое значение";
-          } else {
-            const { error } = await db.from(table).update(updateData).eq(naturalCol, naturalVal);
-            resultText = error
-              ? `Ошибка: ${error.message}`
-              : `✅ ${entity} "${naturalVal}" обновлён(а)`;
-            if (!error) revalidatePath("/");
-          }
-        } else {
-          resultText = `❌ Не хватает идентификатора. Укажи название/имя тарифа, игры и т.д.`;
-        }
-      }
-
-    } else if (result.action === "delete") {
-      const { id } = payload as { id: string };
-      const { error } = await db.from(table).delete().eq("id", id);
-      resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} удалён(а)`;
-      if (!error) revalidatePath("/");
-
-    } else if (result.action === "activate" || result.action === "deactivate") {
-      const { id } = payload as { id: string };
-      const active = result.action === "activate";
-      const { error } = await db.from(table).update({ active }).eq("id", id);
-      resultText = error ? `Ошибка: ${error.message}` : `✅ ${entity} ${active ? "активирован(а)" : "деактивирован(а)"}`;
-      if (!error) revalidatePath("/");
-    }
-
+    const reply = await executeResult(result, db);
+    await sendTG(chatId, reply);
   } catch (err) {
-    resultText = `❌ Ошибка: ${String(err)}`;
+    await sendTG(chatId, `❌ Ошибка выполнения: ${String(err).slice(0, 200)}`);
   }
 
-  await sendTG(chatId, resultText || "❌ Неизвестная ошибка");
   return new Response("OK");
 }
