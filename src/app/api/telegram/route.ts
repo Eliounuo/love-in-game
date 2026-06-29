@@ -16,12 +16,8 @@ async function sendTG(chatId: number | string, text: string) {
 }
 
 const NATURAL_KEY: Record<string, string> = {
-  pricing: "name",
-  games: "title",
-  events: "title",
-  promotions: "title",
-  contacts: "type",
-  settings: "key",
+  pricing: "name", games: "title", events: "title",
+  promotions: "title", contacts: "type", settings: "key",
 };
 
 async function executeResult(result: AgentResult, db: ReturnType<typeof createServerClient>): Promise<string> {
@@ -29,12 +25,9 @@ async function executeResult(result: AgentResult, db: ReturnType<typeof createSe
 
   const { entity, payload } = result;
   const table =
-    entity === "contact" ? "contacts"
-    : entity === "setting" ? "settings"
-    : entity === "event" ? "events"
-    : entity === "gallery" ? "gallery"
-    : entity === "game" ? "games"
-    : entity === "promotion" ? "promotions"
+    entity === "contact" ? "contacts" : entity === "setting" ? "settings"
+    : entity === "event" ? "events" : entity === "gallery" ? "gallery"
+    : entity === "game" ? "games" : entity === "promotion" ? "promotions"
     : "pricing";
 
   if (result.action === "add") {
@@ -46,16 +39,13 @@ async function executeResult(result: AgentResult, db: ReturnType<typeof createSe
   if (result.action === "update") {
     const raw = payload as Record<string, unknown>;
     const { id, ...rest } = raw as { id?: string } & Record<string, unknown>;
-
     if (id) {
       const { error } = await db.from(table).update(rest).eq("id", id);
       if (!error) revalidatePath("/");
       return error ? `Ошибка: ${error.message}` : `✅ ${entity} обновлён(а)`;
     }
-
     const naturalCol = NATURAL_KEY[table];
     const naturalVal = naturalCol ? (rest[naturalCol] as string | undefined) : undefined;
-
     if (naturalCol && naturalVal) {
       const { [naturalCol]: _k, ...updateData } = rest as Record<string, unknown>;
       if (Object.keys(updateData).length === 0) return "❌ Нечего обновлять";
@@ -63,7 +53,6 @@ async function executeResult(result: AgentResult, db: ReturnType<typeof createSe
       if (!error) revalidatePath("/");
       return error ? `Ошибка: ${error.message}` : `✅ ${entity} "${naturalVal}" обновлён(а)`;
     }
-
     return "❌ Укажи название тарифа, игры или другого объекта";
   }
 
@@ -76,10 +65,9 @@ async function executeResult(result: AgentResult, db: ReturnType<typeof createSe
 
   if (result.action === "activate" || result.action === "deactivate") {
     const { id } = payload as { id: string };
-    const active = result.action === "activate";
-    const { error } = await db.from(table).update({ active }).eq("id", id);
+    const { error } = await db.from(table).update({ active: result.action === "activate" }).eq("id", id);
     if (!error) revalidatePath("/");
-    return error ? `Ошибка: ${error.message}` : `✅ ${entity} ${active ? "активирован(а)" : "деактивирован(а)"}`;
+    return error ? `Ошибка: ${error.message}` : `✅ ${entity} обновлён(а)`;
   }
 
   return "❌ Неизвестное действие";
@@ -89,14 +77,11 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return new Response("Bad request", { status: 400 }); }
 
-  const message = (body.message ?? body.edited_message) as {
-    chat?: { id?: number }; text?: string;
-  } | undefined;
-
+  const message = (body.message ?? body.edited_message) as
+    { chat?: { id?: number }; text?: string } | undefined;
   if (!message?.text || !message?.chat?.id) return new Response("OK");
 
   const chatId = message.chat.id;
-
   if (ADMIN_CHAT_ID && String(chatId) !== ADMIN_CHAT_ID) {
     await sendTG(chatId, "⛔ Нет доступа.");
     return new Response("OK");
@@ -107,36 +92,43 @@ export async function POST(req: NextRequest) {
   if (text === "/start" || text === "/help") {
     await sendTG(chatId,
       `🎮 <b>Love in Game — AI Ассистент</b>\n\n` +
-      `<b>📋 Команды:</b>\n` +
+      `<b>📋 Команды (мгновенно):</b>\n` +
       `• Измени цену тарифа Стандарт на 2500\n` +
       `• Добавь игру Elden Ring жанр RPG\n` +
       `• Добавь акцию "Скидка 20% в будни"\n` +
       `• Добавь турнир по FIFA на 15 июля, приз 10000\n\n` +
-      `<b>💬 Вопросы:</b>\n` +
-      `• Какие тарифы?\n` +
-      `• Расскажи о кафе`
+      `<b>💬 Свободные вопросы (через AI):</b>\n` +
+      `• Какие у нас тарифы?\n` +
+      `• Сколько стоит аренда на 3 часа?\n` +
+      `• Напиши пост для Instagram про акцию`
     );
     return new Response("OK");
   }
 
-  await sendTG(chatId, "⏳ Думаю...");
-
   const db = createServerClient();
 
-  // 1. Try OpenAI
-  let result: AgentResult | null = null;
-  let aiError = "";
-  try {
-    result = await parseAdminMessage(text);
-  } catch (err) {
-    aiError = String(err);
-    // 2. Fallback: regex parser
-    result = tryRegex(text);
+  // 1. Regex fast-path (instant, no API)
+  let result: AgentResult | null = tryRegex(text);
+
+  // 2. Gemini AI if regex didn't match
+  if (!result) {
+    await sendTG(chatId, "⏳ Думаю...");
+    try {
+      result = await parseAdminMessage(text);
+    } catch (err) {
+      const errMsg = String(err).slice(0, 200);
+      if (errMsg.includes("GEMINI_API_KEY")) {
+        await sendTG(chatId,
+          `⚠️ GEMINI_API_KEY не установлен.\n\nПолучи бесплатный ключ: aistudio.google.com\nДобавь в Vercel → Settings → Environment Variables`);
+      } else {
+        await sendTG(chatId, `❌ AI ошибка: ${errMsg}\n\nПопробуй /help для списка быстрых команд.`);
+      }
+      return new Response("OK");
+    }
   }
 
   if (!result) {
-    const hint = aiError ? `\n\n🔧 Ошибка AI: ${aiError.slice(0, 150)}` : "";
-    await sendTG(chatId, `❌ Не понял команду. Попробуй /help${hint}`);
+    await sendTG(chatId, "❌ Не понял. Попробуй /help");
     return new Response("OK");
   }
 
