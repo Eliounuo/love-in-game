@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -10,7 +10,6 @@ type CategoryKey = typeof MENU_CATEGORIES[number]["key"];
 
 export function MenuSection() {
   const [active, setActive] = useState<CategoryKey>(MENU_CATEGORIES[0].key);
-
   const current = MENU_CATEGORIES.find((c) => c.key === active)!;
 
   return (
@@ -58,14 +57,15 @@ export function MenuSection() {
             transition={{ duration: 0.3 }}
             className="grid md:grid-cols-2 gap-8 items-stretch"
           >
+            {/* Photo — food at top, use object-top to avoid cropping food */}
             <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-xl group">
               <Image
                 src={current.photo}
                 alt={current.label}
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
-                style={{ filter: "brightness(1.02) contrast(1.06) saturate(1.1)" }}
+                className="object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                style={{ filter: "brightness(1.03) contrast(1.06) saturate(1.1)" }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#1D1B19]/60 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 p-6">
@@ -88,7 +88,6 @@ export function MenuSection() {
                   </span>
                 </motion.div>
               ))}
-
               <div className="pt-4">
                 <WhatsAppButton
                   text="Заказать сейчас"
